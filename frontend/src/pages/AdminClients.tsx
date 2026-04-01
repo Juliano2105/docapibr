@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import DataTable from '../components/DataTable';
-import { Search, Ban, CheckCircle, UserPlus, X } from 'lucide-react';
+import { Search, Ban, CheckCircle, UserPlus, X, Copy, Check } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -10,6 +10,8 @@ export default function AdminClients() {
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success'|'error', msg: string } | null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const clients = [
     { id: '1', name: 'Techcorp LTDA', email: 'contato@techcorp.com', plan: 'Pro', status: 'active', usage: '85%' },
@@ -36,15 +38,31 @@ export default function AdminClients() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error?.message || data.message || 'Erro ao cadastrar.');
+      if (!res.ok) throw new Error(data.error?.message || 'Erro ao cadastrar');
+      const link = `${window.location.origin}/login`;
+      setInviteLink(link);
       setFeedback({ type: 'success', msg: `Lojista ${form.name} cadastrado com sucesso!` });
       setForm({ name: '', email: '', password: '' });
-      setTimeout(() => { setShowModal(false); setFeedback(null); }, 2000);
     } catch (err: any) {
       setFeedback({ type: 'error', msg: err.message });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCopyLink = () => {
+    if (inviteLink) {
+      navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setFeedback(null);
+    setInviteLink(null);
+    setCopied(false);
   };
 
   return (
@@ -65,7 +83,7 @@ export default function AdminClients() {
             />
           </div>
           <button
-            onClick={() => { setShowModal(true); setFeedback(null); }}
+            onClick={() => { setShowModal(true); setFeedback(null); setInviteLink(null); }}
             className="flex items-center gap-2 bg-purple-accent hover:bg-purple-accent/80 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
           >
             <UserPlus size={18} />
@@ -81,55 +99,83 @@ export default function AdminClients() {
           <div className="bg-dark-surface border border-white/10 rounded-2xl p-8 w-full max-w-md shadow-2xl">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-white">Cadastrar Lojista</h2>
-              <button onClick={() => setShowModal(false)} className="text-dark-text-muted hover:text-white transition"><X size={20} /></button>
-            </div>
-            <form onSubmit={handleCadastrar} className="flex flex-col gap-4">
-              <div>
-                <label className="block text-sm text-dark-text-muted mb-1">Nome</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Nome do lojista"
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full bg-dark-bg border border-white/10 rounded-lg py-2 px-4 outline-none focus:border-purple-accent transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-dark-text-muted mb-1">E-mail</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="email@loja.com"
-                  value={form.email}
-                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                  className="w-full bg-dark-bg border border-white/10 rounded-lg py-2 px-4 outline-none focus:border-purple-accent transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-dark-text-muted mb-1">Senha</label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Senha de acesso"
-                  value={form.password}
-                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                  className="w-full bg-dark-bg border border-white/10 rounded-lg py-2 px-4 outline-none focus:border-purple-accent transition"
-                />
-              </div>
-              {feedback && (
-                <div className={`text-sm px-4 py-3 rounded-lg ${feedback.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                  {feedback.msg}
-                </div>
-              )}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-purple-accent hover:bg-purple-accent/80 text-white py-3 rounded-xl font-bold transition disabled:opacity-50"
-              >
-                {loading ? 'Cadastrando...' : 'Cadastrar Lojista'}
+              <button onClick={handleCloseModal} className="text-dark-text-muted hover:text-white transition">
+                <X size={20} />
               </button>
-            </form>
+            </div>
+
+            {inviteLink ? (
+              <div className="space-y-4">
+                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
+                  <p className="text-green-400 font-bold mb-1">✓ {feedback?.msg}</p>
+                  <p className="text-green-300 text-sm">Envie o link abaixo para o lojista acessar a plataforma:</p>
+                </div>
+                <div className="bg-dark-bg rounded-xl p-4 border border-white/10 flex items-center gap-3">
+                  <span className="text-white font-mono text-sm flex-1 break-all">{inviteLink}</span>
+                  <button
+                    onClick={handleCopyLink}
+                    className="shrink-0 bg-purple-accent hover:bg-purple-accent/80 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-bold transition"
+                  >
+                    {copied ? <Check size={16} /> : <Copy size={16} />}
+                    {copied ? 'Copiado!' : 'Copiar'}
+                  </button>
+                </div>
+                <button
+                  onClick={handleCloseModal}
+                  className="w-full bg-dark-bg hover:bg-white/5 text-white py-2 rounded-xl font-medium transition border border-white/10"
+                >
+                  Fechar
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleCadastrar} className="space-y-4">
+                <div>
+                  <label className="block text-sm text-dark-text-muted mb-1">Nome</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nome da empresa ou pessoa"
+                    value={form.name}
+                    onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+                    className="w-full bg-dark-bg border border-white/10 rounded-lg py-2 px-4 outline-none focus:border-purple-accent transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-text-muted mb-1">E-mail</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="email@empresa.com"
+                    value={form.email}
+                    onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+                    className="w-full bg-dark-bg border border-white/10 rounded-lg py-2 px-4 outline-none focus:border-purple-accent transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-text-muted mb-1">Senha</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Senha de acesso"
+                    value={form.password}
+                    onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
+                    className="w-full bg-dark-bg border border-white/10 rounded-lg py-2 px-4 outline-none focus:border-purple-accent transition"
+                  />
+                </div>
+                {feedback && (
+                  <div className={`text-sm px-4 py-3 rounded-lg ${feedback.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    {feedback.msg}
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-purple-accent hover:bg-purple-accent/80 text-white py-3 rounded-xl font-bold transition disabled:opacity-50"
+                >
+                  {loading ? 'Cadastrando...' : 'Cadastrar Lojista'}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}

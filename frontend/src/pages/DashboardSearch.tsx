@@ -36,7 +36,7 @@ export default function DashboardSearch() {
     setResult(null);
 
     try {
-      const response = await fetch(`/v1/${type}/${doc}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/v1/${type}/${doc}`);
       const data = await response.json();
       
       if (!response.ok || !data.success) {

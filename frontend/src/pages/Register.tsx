@@ -18,9 +18,9 @@ export default function Register() {
     setError('');
 
     try {
-      await api.post('/auth/register', { name, email, password });
+      await api.post('/v1/auth/register', { name, email, password });
       // Redirect to login after successful register
-      navigate('/login');
+      navigate('/login')
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Erro ao criar conta');
     } finally {

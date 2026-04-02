@@ -28,7 +28,7 @@ export default function Login() {
         return;
       }
 
-      const res = await api.post('/auth/login', { email, password });
+      const res = await api.post('/v1/auth/login', { email, password });
       login(res.data.data.token, res.data.data.user);
       
       if (res.data.data.user.role === 'admin') {

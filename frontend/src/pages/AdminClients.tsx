@@ -1,8 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DataTable from '../components/DataTable';
 import { Search, Ban, CheckCircle, UserPlus, X, Copy, Check } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
+
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  created_at: string;
+  plans?: { name: string } | null;
+}
 
 export default function AdminClients() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -12,19 +21,41 @@ export default function AdminClients() {
   const [feedback, setFeedback] = useState<{ type: 'success'|'error', msg: string } | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(true);
 
-  const clients = [
-    { id: '1', name: 'Techcorp LTDA', email: 'contato@techcorp.com', plan: 'Pro', status: 'active', usage: '85%' },
-    { id: '2', name: 'StartApp Brasil', email: 'dev@startapp.br', plan: 'Basic', status: 'active', usage: '30%' },
-    { id: '3', name: 'João Dev', email: 'joao@dev.com', plan: 'Free', status: 'blocked', usage: '100%' },
-  ];
+  const fetchClients = async () => {
+    try {
+      setLoadingClients(true);
+      const token = localStorage.getItem('token') || '';
+      const res = await fetch(`${API_URL}/v1/admin/clients`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.data?.clients) {
+        setClients(data.data.clients);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar clientes:', err);
+    } finally {
+      setLoadingClients(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const filteredClients = clients.filter(
+    c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         c.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const columns = [
-    { key: 'name', title: 'Cliente / Empresa', render: (row: any) => <div><p className="font-bold">{row.name}</p><p className="text-xs text-dark-text-muted">{row.email}</p></div> },
-    { key: 'plan', title: 'Plano', render: (row: any) => <span className="font-mono bg-dark-bg px-2 py-1 rounded border border-white/5 text-purple-accent">{row.plan}</span> },
-    { key: 'usage', title: 'Uso Mensal' },
-    { key: 'status', title: 'Status', render: (row: any) => (<span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider ${row.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400 uppercase'}`}>{row.status === 'active' ? 'ATIVO' : 'BLOQUEADO'}</span>) },
-    { key: 'actions', title: '', render: (row: any) => (<button className={`p-2 rounded-lg transition-colors ${row.status === 'active' ? 'text-red-400 hover:bg-red-500/10' : 'text-green-500 hover:bg-green-500/10'}`}>{row.status === 'active' ? <Ban size={18} /> : <CheckCircle size={18} />}</button>) },
+    { key: 'name', title: 'Cliente / Empresa', render: (row: Client) => <div><p className="font-bold">{row.name}</p><p className="text-xs text-dark-text-muted">{row.email}</p></div> },
+    { key: 'plan', title: 'Plano', render: (row: Client) => <span className="font-mono bg-dark-bg px-2 py-1 rounded border border-white/5 text-purple-accent">{row.plans?.name || 'Free'}</span> },
+    { key: 'status', title: 'Status', render: (row: Client) => (<span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider ${row.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400 uppercase'}`}>{row.status === 'active' ? 'ATIVO' : 'BLOQUEADO'}</span>) },
+    { key: 'actions', title: '', render: (row: Client) => (<button className={`p-2 rounded-lg transition-colors ${row.status === 'active' ? 'text-red-400 hover:bg-red-500/10' : 'text-green-500 hover:bg-green-500/10'}`}>{row.status === 'active' ? <Ban size={18} /> : <CheckCircle size={18} />}</button>) },
   ];
 
   const handleCadastrar = async (e: React.FormEvent) => {
@@ -43,6 +74,7 @@ export default function AdminClients() {
       setInviteLink(link);
       setFeedback({ type: 'success', msg: `Lojista ${form.name} cadastrado com sucesso!` });
       setForm({ name: '', email: '', password: '' });
+      fetchClients();
     } catch (err: any) {
       setFeedback({ type: 'error', msg: err.message });
     } finally {
@@ -92,7 +124,11 @@ export default function AdminClients() {
         </div>
       </div>
 
-      <DataTable columns={columns} data={clients} />
+      {loadingClients ? (
+        <div className="text-center text-dark-text-muted py-12">Carregando clientes...</div>
+      ) : (
+        <DataTable columns={columns} data={filteredClients} />
+      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
